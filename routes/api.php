@@ -30,6 +30,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/customers', [AdminCustomerController::class, 'index']);
     Route::get('/customers/pending-count', [AdminCustomerController::class, 'pendingCount']);
     Route::patch('/customers/{id}/status', [AdminCustomerController::class, 'updateStatus']);
+
 });
 
 // ============================================================
@@ -64,10 +65,16 @@ Route::middleware('auth.token')->group(function () {
     // Orders & Customers
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::delete('/orders/{id}', [AdminOrderController::class, 'destroy']);
+    Route::put('/orders/{id}', [AdminOrderController::class, 'update']);
+    Route::get('/orders/{id}/receipt', [AdminOrderController::class, 'receipt']);
 
     Route::get('/customers', [AdminCustomerController::class, 'index']);
     Route::get('/customers/pending/count', [AdminCustomerController::class, 'pendingCount']);
     Route::put('/customers/{id}/status', [AdminCustomerController::class, 'updateStatus']);
+
+
+
+    
 
     // Reviews
     Route::get('/reviews', [AdminReviewController::class, 'index']);

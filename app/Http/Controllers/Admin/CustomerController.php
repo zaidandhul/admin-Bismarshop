@@ -92,35 +92,15 @@ class CustomerController extends BaseController
     // ============================================================
     // ====================== PENDING COUNT ========================
     // ============================================================
-    public function pendingCount()
-    {
-        try {
-            // Customer inactive = belum approve
-            $c1   = DB::selectOne("SELECT COUNT(*) AS cnt FROM customers WHERE status = 'inactive'");
-            $cnt1 = (int) ($c1->cnt ?? 0);
+ public function pendingCount()
+{
+    $count = DB::table('customers')
+        ->where('status', 'pending')
+        ->orWhere('status', 'pending_approval')
+        ->count();
 
-            // User pending = belum masuk customers + belum aktif
-            $c2 = DB::selectOne("
-                SELECT COUNT(*) AS cnt
-                FROM users u
-                LEFT JOIN customers c ON c.email = u.email
-                WHERE c.email IS NULL
-                  AND (u.role_id IS NULL OR u.role_id = 0)
-                  AND (u.is_active IS NULL OR u.is_active = 0)
-            ");
-            $cnt2 = (int) ($c2->cnt ?? 0);
-
-            return response()->json([
-                'success' => true,
-                'count'   => $cnt1 + $cnt2,
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => true,
-                'count'   => 0,
-            ]);
-        }
-    }
+    return response()->json(['success' => true, 'count' => $count]);
+}
 
     // ============================================================
     // ==================== UPDATE STATUS ==========================

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
 
 class OrderController extends BaseController
 {
@@ -23,6 +24,51 @@ class OrderController extends BaseController
         } catch (\Throwable $e) {
             return response()->json(['success'=>true,'data'=>[]]);
         }
+    }
+
+    public function update(Request $req, $id)
+    {
+        $orderId = (int)$id;
+        $newStatus = $req->input('status');
+        if (!$newStatus) {
+            return response()->json(['success' => false, 'message' => 'Status required'], 400);
+        }
+
+        try {
+            $updated = DB::update('UPDATE orders SET status = ? WHERE id = ?', [$newStatus, $orderId]);
+            if ($updated === 0) {
+                return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+            }
+            return response()->json(['success' => true, 'message' => 'Status updated']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to update status'], 500);
+        }
+    }
+
+    public function receipt($id)
+    {
+        $orderId = (int)$id;
+        if ($orderId <= 0) {
+            return response()->json(['success' => false, 'message' => 'Invalid order ID'], 400);
+        }
+
+        $order = DB::table('orders')
+            ->where('id', $orderId)
+            ->orWhereRaw('CAST(id AS UNSIGNED) = ?', [$orderId])
+            ->first();
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order tidak ditemukan'], 404);
+        }
+
+        $items = DB::table('order_items')
+            ->where('order_id', $orderId)
+            ->orWhereRaw('CAST(order_id AS UNSIGNED) = ?', [$orderId])
+            ->get();
+
+        // Render Blade view as HTML
+        $html = View::make('receipt', compact('order', 'items'))->render();
+        return response($html)->header('Content-Type', 'text/html');
     }
 
     public function destroy(Request $req, $id)
