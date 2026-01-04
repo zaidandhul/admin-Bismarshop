@@ -4334,50 +4334,22 @@ function viewOrderDetails(orderId) {
     showNotification(details, "info", 10000);
 }
 
-// Receipt printing functionality
-async function printReceipt(id) {
+// Buka halaman receipt (nota) di tab baru agar bisa di-print/download
+function printReceipt(id) {
     if (!id) return;
 
     try {
-        // Kirim Authorization header supaya middleware auth.token lolos
-        const response = await fetch(`/api/orders/${id}/receipt`, {
-            headers: {
-                'Authorization': `Bearer ${authToken || window.authToken || localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken')}`,
-                'Accept': 'text/html'  // Biar Laravel tahu kita mau HTML (receipt)
-            }
-        });
-
-        if (!response.ok) {
-            let errorMsg = 'Gagal memuat receipt';
-            try {
-                const errText = await response.text();
-                if (errText.includes('login') || errText.includes('Unauthenticated')) {
-                    errorMsg = 'Sesi login habis, silakan login ulang';
-                } else if (response.status === 404) {
-                    errorMsg = 'Order tidak ditemukan';
-                }
-            } catch (_) {}
-            throw new Error(errorMsg);
+        const url = `/orders/${id}/receipt`;
+        const win = window.open(url, "_blank");
+        if (!win) {
+            showNotification(
+                "Popup diblokir browser. Izinkan popup untuk membuka nota.",
+                "warning"
+            );
         }
-
-        const html = await response.text();
-
-        // Buka di tab baru
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            showNotification("Popup diblokir! Izinkan popup untuk mencetak receipt.", "warning");
-            return;
-        }
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.focus();
-
-        // Optional: langsung print otomatis setelah load
-        // printWindow.print();
-
     } catch (err) {
         console.error(err);
-        showNotification("Gagal membuka receipt: " + err.message, "error");
+        showNotification("Gagal membuka halaman nota", "error");
     }
 }
 
