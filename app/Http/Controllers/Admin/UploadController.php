@@ -20,8 +20,9 @@ class UploadController extends BaseController
             if (!is_array($files)) $files = [$files];
 
             $uploaded = [];
-            // Simpan file ke public/uploads agar bisa diakses via URL /uploads/...
-            $dest = public_path('uploads');
+            // Simpan file ke folder uploads di luar public (../uploads)
+            // URL tetap /uploads/... dan akan dilayani lewat route web
+            $dest = public_path('..'.DIRECTORY_SEPARATOR.'uploads');
             if (!is_dir($dest)) @mkdir($dest, 0775, true);
 
             // Ensure product_images table exists before inserting placeholders

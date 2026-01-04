@@ -8,6 +8,16 @@ Route::get('/', function () {
     return redirect('/login.html');
 });
 
+// Serve uploaded files stored in ../uploads via /uploads/... URL
+Route::get('/uploads/{path}', function ($path) {
+    $base = public_path('..'.DIRECTORY_SEPARATOR.'uploads');
+    $fullPath = realpath($base.DIRECTORY_SEPARATOR.$path);
+    if (!$fullPath || !is_file($fullPath) || strpos($fullPath, realpath($base)) !== 0) {
+        abort(404);
+    }
+    return response()->file($fullPath);
+})->where('path', '.*');
+
 // Halaman receipt order (nota) untuk admin, menampilkan receipt.blade.php
 Route::get('/orders/{id}/receipt', [OrderController::class, 'receipt']);
 
