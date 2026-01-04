@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\CustomerAddressController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\AnalyticsController;
 
 Route::get('/', function () {
     return redirect('/login.html');
@@ -17,6 +18,9 @@ Route::get('/uploads/{path}', function ($path) {
     }
     return response()->file($fullPath);
 })->where('path', '.*');
+
+// Export analytics ke Excel menggunakan Blade view khusus
+Route::get('/analytics/export/excel', [AnalyticsController::class, 'exportExcel']);
 
 // Halaman receipt order (nota) untuk admin, menampilkan receipt.blade.php
 Route::get('/orders/{id}/receipt', [OrderController::class, 'receipt']);

@@ -8409,49 +8409,11 @@ async function exportAnalytics(format) {
             // Biarkan user pilih "Save as PDF" dari dialog print
             win.print();
         } else if (format === "excel") {
-            // Simple CSV export compatible with Excel
-            const rows = [];
-            rows.push(["Laporan Analytics Penjualan"]);
-            rows.push(["Periode", periodLabel, "Dibuat", formattedDate]);
-            rows.push([]);
-            rows.push(["Ringkasan"]);
-            rows.push(["Total Omzet", summary.totalSales.amount || 0]);
-            rows.push(["Total Unit Terjual", summary.totalSales.count || 0]);
-            rows.push(["Total Pengunjung", summary.totalVisitors || 0]);
-            rows.push(["Conversion Rate (%)", summary.conversionRate || 0]);
-            rows.push([]);
-            rows.push(["Top Produk Berdasarkan Penjualan"]);
-            rows.push(["No", "Produk", "Kategori", "Terjual", "Pendapatan"]);
-            topProducts.forEach((p, idx) => {
-                rows.push([
-                    idx + 1,
-                    p.name || "-",
-                    p.category || "-",
-                    p.sold || 0,
-                    p.revenue || 0,
-                ]);
-            });
-
-            const csv = rows
-                .map((cols) =>
-                    cols
-                        .map((v) => String(v).replace(/"/g, '""'))
-                        .map((v) => `"${v}"`)
-                        .join(",")
-                )
-                .join("\r\n");
-
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `analytics_${period}_${now
-                .toISOString()
-                .slice(0, 10)}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Gunakan endpoint backend yang merender Blade view sebagai file Excel
+            const url = `/analytics/export/excel?period=${encodeURIComponent(
+                period
+            )}`;
+            window.open(url, "_blank");
         }
     } catch (error) {
         console.error("Error exporting analytics:", error);

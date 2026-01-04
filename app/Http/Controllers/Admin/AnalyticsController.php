@@ -359,4 +359,106 @@ class AnalyticsController extends BaseController
             return response()->json(['success'=>false,'message'=>'Failed to build analytics summary'], 500);
         }
     }
+
+    public function exportExcel(Request $req)
+    {
+        try {
+            $period = (string)$req->query('period', '7days');
+            $days = match($period) {
+                '30days' => 30,
+                '90days' => 90,
+                '365days' => 365,
+                default => 7,
+            };
+
+            // Ringkasan penjualan dan status (reuse logic dari analyticsSummary, disederhanakan)
+            $row = DB::selectOne(
+                "SELECT
+                    COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN total_amount ELSE 0 END),0) AS period_amount,
+                    COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) THEN 1 ELSE 0 END),0) AS period_orders
+                  FROM orders",
+                [$days, $days]
+            );
+            $r = $row ?: (object) [];
+
+            // Pengunjung (approx) dan produk performa singkat
+            $trendRows = DB::select(
+                "SELECT DATE(created_at) AS d, COUNT(*) AS orders
+                 FROM orders
+                 WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                 GROUP BY DATE(created_at)
+                 ORDER BY d",
+                [min($days, 14)]
+            );
+            $visitorData = array_map(function($row){
+                $orders = (int)($row->orders ?? 0);
+                $visitors = $orders > 0 ? max($orders * 10, $orders + 5) : 0;
+                return [ 'date' => substr((string)$row->d, 0, 10), 'visitors' => $visitors, 'orders' => $orders ];
+            }, $trendRows);
+            $totalVisitors = array_sum(array_map(fn($v)=> (int)$v['visitors'], $visitorData));
+            $avgVisitors = count($visitorData) ? (int) round($totalVisitors / max(count($visitorData),1)) : 0;
+
+            $prodRows = DB::select(
+                "SELECT 
+                   COALESCE(p.name, oi.product_name) AS name,
+                   COALESCE(p.category, 'Lainnya')   AS category,
+                   SUM(oi.quantity)                  AS sold,
+                   SUM(oi.quantity * oi.price)       AS revenue
+                 FROM order_items oi
+                 JOIN orders o   ON o.id = oi.order_id
+                 LEFT JOIN products p ON p.id = oi.product_id
+                 WHERE o.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                 GROUP BY COALESCE(p.name, oi.product_name), COALESCE(p.category, 'Lainnya')
+                 ORDER BY revenue DESC
+                 LIMIT 20",
+                [$days]
+            );
+            $topProducts = array_map(fn($pr)=>[
+                'name' => $pr->name ?? 'Produk',
+                'category' => $pr->category ?? 'Lainnya',
+                'sold' => (int)($pr->sold ?? 0),
+                'revenue' => (int)($pr->revenue ?? 0),
+            ], $prodRows);
+
+            $summary = [
+                'totalSales' => [
+                    'amount' => (int)($r->period_amount ?? 0),
+                    'count' => (int)($r->period_orders ?? 0),
+                    'periodDays' => $days,
+                ],
+                'totalVisitors' => $totalVisitors,
+                'conversionRate' => $totalVisitors > 0
+                    ? round(((int)($r->period_orders ?? 0) / $totalVisitors) * 1000) / 10
+                    : 0,
+            ];
+
+            $periodLabelMap = [
+                '7days' => '7 Hari Terakhir',
+                '30days' => '30 Hari Terakhir',
+                '90days' => '3 Bulan Terakhir',
+                '365days' => '12 Bulan Terakhir',
+            ];
+            $periodLabel = $periodLabelMap[$period] ?? $period;
+
+            $now = now();
+            $generatedAt = $now->format('d/m/Y H:i');
+
+            $view = view('analytics_excel', [
+                'period' => $period,
+                'periodLabel' => $periodLabel,
+                'generatedAt' => $generatedAt,
+                'summary' => $summary,
+                'avgVisitors' => $avgVisitors,
+                'topProducts' => $topProducts,
+            ]);
+
+            $filename = 'analytics_'.$period.'_'.$now->format('Ymd').'.xls';
+
+            return response($view->render())
+                ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
+                ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+        } catch (\Throwable $e) {
+            return response('Failed to export analytics: '.$e->getMessage(), 500);
+        }
+    }
 }
