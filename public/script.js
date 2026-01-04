@@ -470,7 +470,9 @@ function renderOrderRow(o) {
             <td>${escapeHtml(address)}</td>
             <td>${escapeHtml(total)}</td>
             <td>
-                <select class="form-select form-select-sm" onchange="updateOrderStatus(${id}, this.value)">
+                <select class="form-select form-select-sm" data-current="${String(
+                    status || ""
+                )}" onchange="updateOrderStatus(${id}, this.value, this)">
                     ${statusOptions}
                 </select>
             </td>
@@ -4224,60 +4226,25 @@ async function loadOrdersLegacy() {
 
 function updateOrdersTable() {
     const tbody = document.getElementById("ordersTableBody");
-    tbody.innerHTML = "";
+    if (!tbody) return;
 
-    orders.forEach((order) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>#${order.id}</td>
-            <td>${order.customer_name}</td>
-            <td>${order.customer_email}</td>
-            <td>${escapeHtml(order.shipping_address || "-")}</td>
-            <td class="currency">${formatCurrency(order.total_amount)}</td>
-            <td>
-                <select class="form-select form-select-sm" data-current="${String(
-                    order.status || ""
-                )}" onchange="updateOrderStatus('${
-            order.id
-        }', this.value, this)">
-                    <option value="pending" ${
-                        String(order.status).toLowerCase() === "pending"
-                            ? "selected"
-                            : ""
-                    }>Pending</option>
-                    <option value="processing" ${
-                        String(order.status).toLowerCase() === "processing"
-                            ? "selected"
-                            : ""
-                    }>Processing</option>
-                    <option value="shipped" ${
-                        String(order.status).toLowerCase() === "shipped"
-                            ? "selected"
-                            : ""
-                    }>Shipped</option>
-                    <option value="completed" ${
-                        String(order.status).toLowerCase() === "completed"
-                            ? "selected"
-                            : ""
-                    }>Completed</option>
-                    <option value="cancelled" ${
-                        String(order.status).toLowerCase() === "cancelled"
-                            ? "selected"
-                            : ""
-                    }>Cancelled</option>
-                </select>
-            </td>
-            <td>${formatDate(order.created_at)}</td>
-            <td class="action-buttons">
-                <button class="btn btn-sm btn-outline-success" onclick="printReceipt('${
-                    order.id
-                }')" title="Print Receipt">
-                    <i class="fas fa-print"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
+    const list = Array.isArray(orders) ? orders : [];
+    tbody.innerHTML = list
+        .map((order) =>
+            renderOrderRow({
+                id: order.id,
+                customer_name: order.customer_name,
+                customer_email: order.customer_email,
+                shipping_address: order.shipping_address,
+                address: order.address,
+                total_amount: order.total_amount,
+                status: order.status,
+                order_status: order.order_status,
+                created_at: order.created_at,
+                date: order.created_at,
+            })
+        )
+        .join("");
 }
 
 async function updateOrderStatus(orderId, newStatus, el = null) {
